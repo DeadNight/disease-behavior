@@ -1,0 +1,265 @@
+<!doctype html>
+<html>
+<head>
+    <script src='https://d3js.org/d3.v4.min.js'></script>
+</head>
+<body>
+<div style="position: fixed; margin-top: -5px;">
+    <select id='device1'></select>
+    <select id='week1'></select>
+    <select id='feature1'>
+        <option>distance</option>
+        <option>speed</option>
+    </select>
+    <select id="graphType">
+        <option>raw</option>
+        <option disabled>daily diff</option>
+    </select>
+</div>
+<svg id="graph1" width='6000' height='335'></svg>
+<div style="position: fixed; margin-top: -5px;">
+    <select id='device2'></select>
+    <select id='week2'></select>
+    <select id='feature2'>
+        <option>distance</option>
+        <option>speed</option>
+    </select>
+</div>
+<svg id="graph2" width='6000' height='335'></svg>
+<script>
+    var device = [document.getElementById('device1'), document.getElementById('device2')];
+    var week = [document.getElementById('week1'), document.getElementById('week2')];
+    var feature = [document.getElementById('feature1'), document.getElementById('feature2')];
+    var graph = [d3.select('svg#graph1'), d3.select('svg#graph2')];
+
+    var margin = {top: 20, right: 20, bottom: 65, left: 60};
+    var width = +graph[0].attr('width') - margin.left - margin.right;
+    var height = +graph[0].attr('height') - margin.top - margin.bottom;
+    var g = [
+      graph[0].append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')'),
+      graph[1].append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+      ];
+
+    var x = d3.scaleTime().rangeRound([0, width]);
+    var y = d3.scaleLinear().rangeRound([height, 0]);
+
+//    var line = d3.line()
+//      .x(function(d) { return x(d.date); })
+//      .y(function(d) { return y(extractFeature(d)); });
+
+    var data;
+    var xhr = new XMLHttpRequest();
+
+    var extractFeature = function (i, d) {
+      switch (feature[i].value) {
+        case 'speed':
+          return Math.min(100, d.speed);
+        case 'distance':
+          return Math.min(1000, d.attributes.distance);
+      }
+    };
+
+    var extractDayColor = function(d) {
+      switch(d.date.getDay()) {
+        case 0: return '#339966';
+        case 1: return '#663333';
+        case 2: return '#003333';
+        case 3: return '#990066';
+        case 4: return '#333399';
+        case 5: return '#ff6633';
+        case 6: return '#003366';
+      }
+    };
+
+    var updateWeeks = function(i) {
+      while(week[i].children.length)
+        week[i].removeChild(week[i].children[0]);
+      for(var key in data[device[i].value]) {
+        if(data[device[i].value].hasOwnProperty(key)) {
+          var option = document.createElement('option');
+          option.innerText = key;
+          week[i].appendChild(option);
+        }
+      }
+    };
+
+    var showGraph = function(i) {
+      x.domain(d3.extent(data[device[i].value][week[i].value], function (d) {
+        return d.date;
+      })).nice(d3.timeWeek, 1);
+      y.domain(d3.extent(data[device[i].value][week[i].value], function(d) {
+        return extractFeature(i, d);
+      }));
+
+      g[i].selectAll('*').remove();
+
+      g[i].append('g')
+        .attr('transform', 'translate(0,' + height + ')')
+        .call(d3.axisBottom(x).ticks(d3.timeMinute.every(5)).tickFormat(d3.timeFormat('')))
+        .select('.domain')
+        .remove();
+      g[i].append('g')
+        .attr('transform', 'translate(0,' + (height + 5) + ')')
+        .call(d3.axisBottom(x).ticks(d3.timeMinute.every(30)).tickFormat(d3.timeFormat('')))
+        .select('.domain')
+        .remove();
+      g[i].append('g')
+        .attr('transform', 'translate(0,' + (height + 5) + ')')
+        .call(d3.axisBottom(x).ticks(d3.timeHour.every(1)).tickFormat(d3.timeFormat('%H:00')))
+        .select('.domain')
+        .remove();
+      g[i].append('g')
+        .attr('transform', 'translate(0,' + (height + 25) + ')')
+        .call(d3.axisBottom(x).ticks(d3.timeDay.every(1)).tickFormat(d3.timeFormat('%b %d')))
+        .select('.domain')
+        .remove();
+      g[i].append('g')
+        .attr('transform', 'translate(0,' + (height + 45) + ')')
+        .call(d3.axisBottom(x).ticks(d3.timeDay.every(1)).tickFormat(d3.timeFormat('%a')))
+        .select('.domain')
+        .remove();
+
+      g[i].append('g')
+        .call(d3.axisLeft(y));
+
+//      g.append('path')
+//        .datum(data[device.value][week.value])
+//        .attr('fill', 'none')
+//        .attr('stroke', extractDayColor)
+//        .attr('stroke-linejoin', 'round')
+//        .attr('stroke-linecap', 'round')
+//        .attr('stroke-width', 1.5)
+//        .attr('d', line);
+
+      g[i].selectAll('path').data(data[device[i].value][week[i].value]).enter()
+        .append('path')
+        .attr('fill', 'none')
+        .attr('stroke', extractDayColor)
+        .attr('stroke-width', 1)
+        .attr('d', function (d) {
+          var xVal = x(d.date);
+          var yVal = y(extractFeature(i, d));
+          return 'M ' + xVal + ' ' + yVal + ' L ' + xVal + ' ' + height;
+        })
+        .style('opacity', .4);
+
+      g[i].selectAll('circle').data(data[device[i].value][week[i].value]).enter()
+        .append('circle')
+        .data(data[device[i].value][week[i].value])
+        .attr('fill', extractDayColor)
+        .attr('stroke', extractDayColor)
+        .attr('stroke-width', 1.5)
+        .attr('r', 1)
+        .attr('cx', function (d) {
+          return x(d.date);
+        })
+        .attr('cy', function (d) {
+          return y(extractFeature(i, d));
+        })
+        .style('opacity', function(d) {
+          return extractFeature(i, d) ? 1 : .4;
+        });
+
+      var focus = graph[i].append('g')
+        .style('display', 'none');
+
+      focus.append('circle')
+        .attr('fill', 'none')
+        .attr('stroke', 'steelblue')
+        .attr('r', 4.5);
+
+      focus.append('text')
+        .attr('x', 0)
+        .attr('y', '-.35em')
+        .style('text-shadow', '2px 2px 2px white, 1px 0 2px white, 0 -1px 2px white, -1px 0 2px white');
+
+      focus.append('path')
+        .attr('fill', 'none')
+        .attr('stroke', '#999')
+        .attr('stroke-width', 1)
+        .attr('d', 'M 0 0 L 0 ' + height);
+
+      graph[i].append('rect')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+        .attr('fill', 'none')
+        .attr('width', width)
+        .attr('height', height)
+        .attr('fill', 'none')
+        .style('pointer-events', 'all')
+        .on('mouseover', function() { focus.style('display', null); })
+        .on('mouseout', function() { focus.style('display', 'none'); })
+        .on('mousemove', mousemove);
+
+        function mousemove() {
+          var x0 = x.invert(d3.mouse(this)[0]);
+          var j = d3.bisector(function (d) { return d.date; }).left(data[device[i].value][week[i].value], x0, 1);
+          var d0 = data[device[i].value][week[i].value][j - 1];
+          var d1 = data[device[i].value][week[i].value][j];
+          var d = x0 - d0.date > d1.date - x0 ? d1 : d0;
+          focus
+            .attr('transform', 'translate(' + (x(d.date) + margin.left) + ',' + margin.top + ')');
+          focus.select('circle')
+            .attr('transform', 'translate(' + 0 + ',' + y(extractFeature(i, d)) + ')');
+          focus.select('text')
+            .attr('transform', 'translate(' + 0 + ',' + y(extractFeature(i, d)) + ')')
+            .text(Math.round(extractFeature(i, d)*100)/100);
+        }
+    };
+
+    xhr.open('GET', 'features.json', true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+        data = JSON.parse(xhr.responseText);
+
+        for (var email in data) {
+          if (data.hasOwnProperty(email)) {
+            for(var dataWeek in data[email]) {
+              if (data[email].hasOwnProperty(dataWeek)) {
+                for (var i in data[email][dataWeek]) {
+                  if (data[email][dataWeek].hasOwnProperty(i)) {
+                    data[email][dataWeek][i] = {
+                      date: new Date(data[email][dataWeek][i].timestamp),
+                      speed: data[email][dataWeek][i].speed,
+                      attributes: data[email][dataWeek][i].attributes
+                    }
+                  }
+                }
+              }
+            }
+            for(var i = 0; i < device.length; ++i) {
+              var option = document.createElement('option');
+              option.innerText = email;
+              device[i].appendChild(option);
+            }
+          }
+        }
+
+        for(var i = 0; i < device.length; ++i) {
+          device[i].onchange = (function(i) {
+            return function () {
+              updateWeeks(i);
+              showGraph(i);
+            }
+          })(i);
+
+          week[i].onchange = (function(i) {
+            return function () {
+                showGraph(i);
+              }
+            })(i);
+
+          feature[i].onchange = (function(i) {
+            return function () {
+              showGraph(i);
+            }
+          })(i);
+
+          updateWeeks(i);
+          showGraph(i);
+        }
+      }
+    };
+    xhr.send();
+</script>
+</body>
+</html>
