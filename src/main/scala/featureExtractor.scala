@@ -11,10 +11,27 @@ object featureExtractor extends App {
 
   val positions: Seq[Position] = DAO.loadPositions()
   val data =
-    JSONObject(positions.groupBy(p => p.email).map{ case (email, byDevice) => email -> {
-      JSONObject(byDevice.groupBy(p => getWeek(p.date)).map { case (week, byWeek) => week.toString ->
-        JSONArray(byWeek.map(p => JSONObject(Map("timestamp" -> f"${p.date}", "speed" -> p.speed, "attributes" -> p.attributes))).toList)
-      }) } })
+    JSONObject(positions.groupBy(p => p.deviceId).map{ case (deviceId, byDevice) => deviceId.toString -> {
+      JSONObject(Map(
+        "email" -> byDevice.head.email,
+        "weeks" -> {
+          JSONObject(byDevice.groupBy(p => getWeek(p.date)).map { case (week, byWeek) => week.toString -> {
+            JSONObject(Map(
+              "minDay" -> byWeek.minBy(p => p.date.toLocalDate.toEpochDay).date.toLocalDate.toString,
+              "maxDay" -> byWeek.maxBy(p => p.date.toLocalDate.toEpochDay).date.toLocalDate.toString,
+              "days" -> {
+                JSONObject(byWeek.groupBy(p => p.date.toLocalDate).map { case (day, byDay) => day.toString -> {
+                  JSONObject(Map(
+                    "totalDistance" -> (byDay.maxBy(p => p.totalDistance).totalDistance - byDay.minBy(p => p.totalDistance).totalDistance),
+                    "data" -> JSONArray(byDay.map(p => JSONObject(Map("timestamp" -> p.date.toString, "speed" -> p.speed, "distance" -> p.distance))).toList)
+                  ))
+                }})
+              }
+            ))
+          }})
+        }
+      ))
+    }})
 
   val writer: PrintWriter = new PrintWriter(new FileWriter("features.json"))
   writer.println(data.toString())

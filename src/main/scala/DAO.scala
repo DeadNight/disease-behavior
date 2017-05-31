@@ -29,12 +29,14 @@ object DAO {
           " order by d.id, p.servertime")
         val result = statement.executeQuery()
         while(result.next()) {
+          val attributes: JSONObject = JSON.parseRaw(result.getString("attributes")).getOrElse(JSONObject(Map.empty)).asInstanceOf[JSONObject]
           positions += Position(
             result.getLong("id"),
             result.getString("name"),
             LocalDateTime.ofInstant(result.getTimestamp("servertime").toInstant, ZoneId.systemDefault()),
             result.getDouble("speed"),
-            JSONObject(JSON.parseFull(result.getString("attributes")).getOrElse(Map.empty).asInstanceOf[Map[String, Any]]))
+            attributes.obj("distance").asInstanceOf[Double],
+            attributes.obj("totalDistance").asInstanceOf[Double])
         }
       } finally {
         if (connection != null)
