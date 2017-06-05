@@ -8,7 +8,7 @@
     <label for="graphType">graph:</label>
     <select id="graphType">
         <option>raw</option>
-        <option value="dailyDiff" disabled>daily diff</option>
+        <option value="dailyDiff">daily diff</option>
     </select>
     <label for="device1">device:</label>
     <select id='device1'></select>
@@ -20,7 +20,9 @@
         <option>speed</option>
     </select>
 </div>
-<svg id="graph1" width='6000' height='335'></svg>
+<div>
+    <svg id="graph1" width='6000' height='335'></svg>
+</div>
 <div style="position: fixed; margin-top: -5px;">
     <label for="device2">device:</label>
     <select id='device2'></select>
@@ -32,7 +34,9 @@
         <option>speed</option>
     </select>
 </div>
-<svg id="graph2" width='6000' height='335'></svg>
+<div>
+    <svg id="graph2" width='6000' height='335'></svg>
+</div>
 <script>
     var graphType = document.getElementById('graphType');
     var device = [document.getElementById('device1'), document.getElementById('device2')];
@@ -40,15 +44,15 @@
     var feature = [document.getElementById('feature1'), document.getElementById('feature2')];
     var graph = [d3.select('svg#graph1'), d3.select('svg#graph2')];
 
-    var margin = {top: 20, right: 20, bottom: 65, left: 60};
-    var width = +graph[0].attr('width') - margin.left - margin.right;
+    var margin = {top: 20, right: 20, bottom: 65, left: 65};
+    var width = [];
     var height = +graph[0].attr('height') - margin.top - margin.bottom;
     var g = [
       graph[0].append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')'),
       graph[1].append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
       ];
 
-    var x = [d3.scaleTime().rangeRound([0, width]), d3.scaleTime().rangeRound([0, width])];
+    var x = [];
     var y = [d3.scaleLinear().rangeRound([height, 0]), d3.scaleLinear().rangeRound([height, 0])];
 
 //    var line = d3.line()
@@ -70,8 +74,11 @@
 
           switch(graphType.value) {
             case 'dailyDiff':
+              var date = new Date(dayData.date);
+              date.setHours(0, 0, 0, 0);
+
               data[i].push({
-                date: new Date(dayData.date),
+                date: date,
                 totalDistance: dayData.totalDistance
               });
               break;
@@ -148,6 +155,20 @@
     };
 
     var showGraph = function(i) {
+      g[i].selectAll('*').remove();
+
+      switch (graphType.value) {
+        case 'raw':
+          graph[i].attr('width', 6000);
+          break;
+        case 'dailyDiff':
+          graph[i].attr('width', 600);
+          break;
+      }
+
+      width[i] = +graph[0].attr('width') - margin.left - margin.right;
+      x[i] = d3.scaleTime().rangeRound([0, width[i]]);
+
       x[i].domain(d3.extent(data[i], function (d) {
         return d.date;
       })).nice(d3.timeWeek, 1);
@@ -155,37 +176,43 @@
         return extractFeature(i, d);
       }));
 
-      g[i].selectAll('*').remove();
+      var axisMargin = 0;
 
       if(graphType.value == 'raw') {
         g[i].append('g')
-          .attr('transform', 'translate(0,' + height + ')')
+          .attr('transform', 'translate(0,' + height + axisMargin + ')')
           .call(d3.axisBottom(x[i]).ticks(d3.timeMinute.every(5)).tickFormat(d3.timeFormat('')))
           .select('.domain')
           .remove();
+        axisMargin += 5;
+
         g[i].append('g')
-          .attr('transform', 'translate(0,' + (height + 5) + ')')
+          .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
           .call(d3.axisBottom(x[i]).ticks(d3.timeMinute.every(30)).tickFormat(d3.timeFormat('')))
           .select('.domain')
           .remove();
         g[i].append('g')
-          .attr('transform', 'translate(0,' + (height + 5) + ')')
+          .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
           .call(d3.axisBottom(x[i]).ticks(d3.timeHour.every(1)).tickFormat(d3.timeFormat('%H:00')))
           .select('.domain')
           .remove();
+        axisMargin += 20;
       }
       g[i].append('g')
-        .attr('transform', 'translate(0,' + (height + 25) + ')')
+        .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
         .call(d3.axisBottom(x[i]).ticks(d3.timeDay.every(1)).tickFormat(d3.timeFormat('%b %d')))
         .select('.domain')
         .remove();
+      axisMargin += 20;
+
       g[i].append('g')
-        .attr('transform', 'translate(0,' + (height + 45) + ')')
+        .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
         .call(d3.axisBottom(x[i]).ticks(d3.timeDay.every(1)).tickFormat(d3.timeFormat('%a')))
         .select('.domain')
         .remove();
 
       g[i].append('g')
+        .attr('transform', 'translate(-5, 0)')
         .call(d3.axisLeft(y[i]));
 
 //      g.append('path')
@@ -236,7 +263,7 @@
 
       focus.append('text')
         .attr('x', 0)
-        .attr('y', '-.35em')
+        .attr('y', '1em')
         .style('text-shadow', '2px 2px 2px white, 1px 0 2px white, 0 -1px 2px white, -1px 0 2px white');
 
       focus.append('path')
@@ -248,7 +275,7 @@
       graph[i].append('rect')
         .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
         .attr('fill', 'none')
-        .attr('width', width)
+        .attr('width', width[i])
         .attr('height', height)
         .attr('fill', 'none')
         .style('pointer-events', 'all')
