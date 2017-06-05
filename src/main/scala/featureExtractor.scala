@@ -22,6 +22,7 @@ object featureExtractor extends App {
               "days" -> {
                 JSONObject(byWeek.groupBy(p => p.date.toLocalDate).map { case (day, byDay) => day.toString -> {
                   JSONObject(Map(
+                    "date" -> byDay.head.date.toLocalDate.toString,
                     "totalDistance" -> (byDay.maxBy(p => p.totalDistance).totalDistance - byDay.minBy(p => p.totalDistance).totalDistance),
                     "data" -> JSONArray(byDay.map(p => JSONObject(Map("timestamp" -> p.date.toString, "speed" -> p.speed, "distance" -> p.distance))).toList)
                   ))
