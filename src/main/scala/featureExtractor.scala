@@ -1,6 +1,6 @@
 import java.io.{FileWriter, PrintWriter}
-import java.time.LocalDateTime
-import java.time.temporal.WeekFields
+import java.time.ZonedDateTime
+import java.time.temporal.{ChronoUnit, WeekFields}
 import java.util.Locale
 
 /**
@@ -17,14 +17,14 @@ object featureExtractor extends App {
         "weeks" -> {
           JSONObject(byDevice.groupBy(p => getWeek(p.date)).map { case (week, byWeek) => week.toString -> {
             JSONObject(Map(
-              "minDay" -> byWeek.minBy(p => p.date.toLocalDate.toEpochDay).date.toLocalDate.toString,
-              "maxDay" -> byWeek.maxBy(p => p.date.toLocalDate.toEpochDay).date.toLocalDate.toString,
+              "minDay" -> byWeek.minBy(p => p.date.getDayOfYear).date.truncatedTo(ChronoUnit.DAYS).toOffsetDateTime.toString,
+              "maxDay" -> byWeek.maxBy(p => p.date.getDayOfYear).date.truncatedTo(ChronoUnit.DAYS).toOffsetDateTime.toString,
               "days" -> {
-                JSONObject(byWeek.groupBy(p => p.date.toLocalDate).map { case (day, byDay) => day.toString -> {
+                JSONObject(byWeek.groupBy(p => p.date.getDayOfYear).map { case (day, byDay) => day.toString -> {
                   JSONObject(Map(
-                    "date" -> byDay.head.date.toLocalDate.toString,
+                    "date" -> byDay.head.date.truncatedTo(ChronoUnit.DAYS).toOffsetDateTime.toString,
                     "totalDistance" -> (byDay.maxBy(p => p.totalDistance).totalDistance - byDay.minBy(p => p.totalDistance).totalDistance),
-                    "data" -> JSONArray(byDay.map(p => JSONObject(Map("timestamp" -> p.date.toString, "speed" -> p.speed, "distance" -> p.distance))).toList)
+                    "data" -> JSONArray(byDay.map(p => JSONObject(Map("timestamp" -> p.date.toOffsetDateTime.toString, "speed" -> p.speed, "distance" -> p.distance))).toList)
                   ))
                 }})
               }
@@ -38,7 +38,7 @@ object featureExtractor extends App {
   writer.println(data.toString())
   writer.close()
 
-  def getWeek(date: LocalDateTime): Int = {
-    date.get(WeekFields.of(Locale.getDefault).weekOfWeekBasedYear())
+  def getWeek(date: ZonedDateTime): Int = {
+    date.get(WeekFields.of(Locale.getDefault).weekOfWeekBasedYear)
   }
 }

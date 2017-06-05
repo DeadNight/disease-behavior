@@ -74,11 +74,8 @@
 
           switch(graphType.value) {
             case 'dailyDiff':
-              var date = new Date(dayData.date);
-              date.setHours(0, 0, 0, 0);
-
               data[i].push({
-                date: date,
+                date: new Date(dayData.date),
                 totalDistance: dayData.totalDistance
               });
               break;
@@ -238,7 +235,6 @@
 
       g[i].selectAll('circle').data(data[i]).enter()
         .append('circle')
-        .data(data[i])
         .attr('fill', extractDayColor)
         .attr('stroke', extractDayColor)
         .attr('stroke-width', 1.5)
@@ -273,7 +269,7 @@
         .attr('d', 'M 0 0 L 0 ' + height);
 
       graph[i].append('rect')
-        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+        .attr('transform', 'translate(' + (margin.left - 5) + ',' + margin.top + ')')
         .attr('fill', 'none')
         .attr('width', width[i])
         .attr('height', height)
