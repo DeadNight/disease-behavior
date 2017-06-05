@@ -221,16 +221,17 @@
 //        .attr('stroke-width', 1.5)
 //        .attr('d', line);
 
-      g[i].selectAll('path').data(data[i]).enter()
-        .append('path')
-        .attr('fill', 'none')
-        .attr('stroke', extractDayColor)
-        .attr('stroke-width', 1)
-        .attr('d', function (d) {
-          var xVal = x[i](d.date);
-          var yVal = y[i](extractFeature(i, d));
-          return 'M ' + xVal + ' ' + yVal + ' L ' + xVal + ' ' + height;
+      g[i].selectAll('rect').data(data[i]).enter()
+        .append('rect')
+        .attr('transform', function(d) {
+          return 'translate(' + (x[i](d.date) - .5) + ',' + y[i](extractFeature(i, d)) + ')';
         })
+        .attr('width', 1)
+        .attr('height', function (d) {
+          return height - y[i](extractFeature(i, d));
+        })
+        .attr('fill', extractDayColor)
+        .attr('stroke', 'none')
         .style('opacity', .4);
 
       g[i].selectAll('circle').data(data[i]).enter()
@@ -273,7 +274,6 @@
         .attr('fill', 'none')
         .attr('width', width[i])
         .attr('height', height)
-        .attr('fill', 'none')
         .style('pointer-events', 'all')
         .on('mouseover', function() { focus.style('display', null); })
         .on('mouseout', function() { focus.style('display', 'none'); })
