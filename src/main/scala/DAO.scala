@@ -1,4 +1,5 @@
-import java.time.{LocalDateTime, ZoneId}
+import java.time.{LocalDateTime, ZoneId, ZoneOffset, ZonedDateTime}
+import java.util.TimeZone
 
 import jdk.nashorn.internal.parser.JSONParser
 
@@ -33,7 +34,7 @@ object DAO {
           positions += Position(
             result.getLong("id"),
             result.getString("name"),
-            LocalDateTime.ofInstant(result.getTimestamp("servertime").toInstant, ZoneId.systemDefault()),
+            ZonedDateTime.ofInstant(result.getTimestamp("servertime").toLocalDateTime, ZoneOffset.ofHours(2), TimeZone.getDefault.toZoneId),
             result.getDouble("speed"),
             attributes.obj("distance").asInstanceOf[Double],
             attributes.obj("totalDistance").asInstanceOf[Double])

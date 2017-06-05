@@ -1,4 +1,5 @@
-import java.time.{Duration, LocalDate, LocalDateTime}
+import java.time.temporal.ChronoUnit
+import java.time.{Duration, ZonedDateTime}
 
 import scala.collection.mutable.ListBuffer
 
@@ -11,10 +12,10 @@ object dataAggregator extends App {
   val positions: Seq[Position] = DAO.loadPositions()
   val devices: Seq[(Long, String)] = positions.map(p => (p.deviceId, p.email)).distinct
 
-  val firstDay = positions.minBy(_.date.toLocalDate.toEpochDay).date.toLocalDate
-  val lastDay = positions.maxBy(_.date.toLocalDate.toEpochDay).date.toLocalDate
+  val firstDay = positions.minBy(_.date.getDayOfYear).date.truncatedTo(ChronoUnit.DAYS)
+  val lastDay = positions.maxBy(_.date.getDayOfYear).date.truncatedTo(ChronoUnit.DAYS)
 
-  val dataBuffer = ListBuffer[((Long, LocalDate, DayPart), AggregatedData)]()
+  val dataBuffer = ListBuffer[((Long, ZonedDateTime, DayPart), AggregatedData)]()
 
   val duration6h = Duration.ofHours(6)
   val duration3h = Duration.ofHours(3)
@@ -23,7 +24,7 @@ object dataAggregator extends App {
   val duration30m = Duration.ofMinutes(30)
 
   var lastDeviceId = devices.head._1
-  var lastDateTime = firstDay.atTime(6, 0)
+  var lastDateTime = firstDay.withHour(6)
   var transmissions: Long = 0
   var gaps6h: Long = 0
   var gaps3h: Long = 0
@@ -43,16 +44,16 @@ object dataAggregator extends App {
     if (!isSameDevice || !isSameDayPart || !(isSameDay || isNightBefore)) {
       // aggregate gaps until end of last day part
       val lastDayPartEndHour = lastDayPart match { case Day => 22; case Night => 6 }
-      val lastDayPartEnd = lastDateTime.toLocalDate.atTime(lastDayPartEndHour, 0)
+      val lastDayPartEnd = lastDateTime.withHour(lastDayPartEndHour)
       aggregateGaps(lastDayPartEnd)
 
       // save the aggregated data
-      val lastDate = if (lastDateTime.getHour < 6) lastDateTime.toLocalDate.minusDays(1) else lastDateTime.toLocalDate
+      val lastDate = if (lastDateTime.getHour < 6) lastDateTime.truncatedTo(ChronoUnit.DAYS).minusDays(1) else lastDateTime.truncatedTo(ChronoUnit.DAYS)
       dataBuffer += (lastDeviceId, lastDate, lastDayPart) -> AggregatedData(transmissions, gaps6h, gaps3h, gaps2h, gaps1h, gaps30m)
 
       // reset aggregation for new day part
       val dayPartStartHour = if (position.dayPart == Day) 6 else 22
-      lastDateTime = position.date.toLocalDate.atTime(dayPartStartHour, 0)
+      lastDateTime = position.date.withHour(dayPartStartHour)
       transmissions = 0
       gaps6h = 0
       gaps3h = 0
@@ -72,11 +73,11 @@ object dataAggregator extends App {
 
   // aggregate gaps until end of last day part
   val lastDayPartEndHour = lastDayPart match { case Day => 22; case Night => 6 }
-  val lastDayPartEnd = lastDateTime.toLocalDate.atTime(lastDayPartEndHour, 0)
+  val lastDayPartEnd = lastDateTime.withHour(lastDayPartEndHour)
   aggregateGaps(lastDayPartEnd)
 
   // save the aggregated data
-  val lastDate = if (lastDateTime.getHour < 6) lastDateTime.toLocalDate.minusDays(1) else lastDateTime.toLocalDate
+  val lastDate = if (lastDateTime.getHour < 6) lastDateTime.truncatedTo(ChronoUnit.DAYS).minusDays(1) else lastDateTime.truncatedTo(ChronoUnit.DAYS)
   dataBuffer += (lastDeviceId, lastDate, lastDayPart) -> AggregatedData(transmissions, gaps6h, gaps3h, gaps2h, gaps1h, gaps30m)
 
   val data = dataBuffer.toMap.withDefaultValue(AggregatedData())
@@ -93,7 +94,7 @@ object dataAggregator extends App {
 
   System.out.print(s"device id${SEPARATOR}email${SEPARATOR}time${SEPARATOR}feature")
   var day = firstDay
-  while(day.toEpochDay <= lastDay.toEpochDay) {
+  while(day.getDayOfYear <= lastDay.getDayOfYear) {
     System.out.print(SEPARATOR)
     System.out.print(day)
     day = day.plusDays(1)
@@ -115,7 +116,7 @@ object dataAggregator extends App {
     System.out.print(SEPARATOR)
     System.out.print(featureName)
     var day = firstDay
-    while(day.toEpochDay <= lastDay.toEpochDay) {
+    while(day.getDayOfYear <= lastDay.getDayOfYear) {
       System.out.print(SEPARATOR)
       val value = extractFeature(data(deviceId, day, dayPart))
       if(featureName == "transmissions")
@@ -127,7 +128,7 @@ object dataAggregator extends App {
     System.out.println()
   }
 
-  private def aggregateGaps(dateTime: LocalDateTime) = {
+  private def aggregateGaps(dateTime: ZonedDateTime) = {
     val duration = Duration.between(lastDateTime, dateTime)
     if(duration.compareTo(duration6h) >= 0)
       gaps6h += 1
