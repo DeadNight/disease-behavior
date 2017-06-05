@@ -136,7 +136,7 @@
           option.value = w;
           var minDay = new Date(weekData.minDay);
           var maxDay = new Date(weekData.maxDay);
-          option.innerText = w + " (" + minDay.getDate() + "/" + (minDay.getMonth()+1) + " - " + maxDay.getDate() + "/" + (maxDay.getMonth()+1) + ")";
+          option.innerText = w + " (" + (minDay.getDate() - minDay.getDay()) + "/" + (minDay.getMonth()+1) + " - " + (maxDay.getDate() + 6 - maxDay.getDay()) + "/" + (maxDay.getMonth()+1) + ")";
           week[i].appendChild(option);
         }
       }
