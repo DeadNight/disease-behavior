@@ -99,7 +99,7 @@
         case 'speed':
           return Math.min(100, d.speed);
         case 'distance':
-          return Math.min(1000, d.distance);
+          return Math.min(2000, d.distance);
         case 'totalDistance':
           return d.totalDistance;
       }
@@ -148,66 +148,74 @@
       }
     };
 
-    var showGraph = function(i) {
-      g[i].selectAll('*').remove();
+    var showGraphs = function() {
+      for(var i in data) {
+        g[i].selectAll('*').remove();
 
-      switch (graphType.value) {
-        case 'raw':
-          graph[i].attr('width', 6000);
-          break;
-        case 'dailyDiff':
-          graph[i].attr('width', 600);
-          break;
-      }
+        switch (graphType.value) {
+          case 'raw':
+            graph[i].attr('width', 6000);
+            break;
+          case 'dailyDiff':
+            graph[i].attr('width', 600);
+            break;
+        }
 
-      width[i] = +graph[0].attr('width') - margin.left - margin.right;
-      x[i] = d3.scaleTime().rangeRound([0, width[i]]);
+        width[i] = +graph[0].attr('width') - margin.left - margin.right;
+        x[i] = d3.scaleTime().rangeRound([0, width[i]]);
 
-      x[i].domain(d3.extent(data[i], function (d) {
-        return d.date;
-      })).nice(d3.timeWeek, 1);
-      y[i].domain(d3.extent(data[i], function(d) {
-        return extractFeature(i, d);
-      }));
+        x[i].domain(d3.extent(data[i], function (d) {
+          return d.date;
+        })).nice(d3.timeWeek, 1);
 
-      var axisMargin = 0;
+        var yExtent = [Infinity, -Infinity];
+        for (var j in data) {
+          var extent = d3.extent(data[j], function (d) {
+            return extractFeature(j, d);
+          });
+          yExtent[0] = Math.min(yExtent[0], extent[0]);
+          yExtent[1] = Math.max(yExtent[1], extent[1]);
+        }
+        y[i].domain(yExtent);
 
-      if(graphType.value == 'raw') {
-        g[i].append('g')
-          .attr('transform', 'translate(0,' + height + axisMargin + ')')
-          .call(d3.axisBottom(x[i]).ticks(d3.timeMinute.every(5)).tickFormat(d3.timeFormat('')))
-          .select('.domain')
-          .remove();
-        axisMargin += 5;
+        var axisMargin = 0;
 
+        if (graphType.value == 'raw') {
+          g[i].append('g')
+            .attr('transform', 'translate(0,' + height + axisMargin + ')')
+            .call(d3.axisBottom(x[i]).ticks(d3.timeMinute.every(5)).tickFormat(d3.timeFormat('')))
+            .select('.domain')
+            .remove();
+          axisMargin += 5;
+
+          g[i].append('g')
+            .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
+            .call(d3.axisBottom(x[i]).ticks(d3.timeMinute.every(30)).tickFormat(d3.timeFormat('')))
+            .select('.domain')
+            .remove();
+          g[i].append('g')
+            .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
+            .call(d3.axisBottom(x[i]).ticks(d3.timeHour.every(1)).tickFormat(d3.timeFormat('%H:00')))
+            .select('.domain')
+            .remove();
+          axisMargin += 20;
+        }
         g[i].append('g')
           .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
-          .call(d3.axisBottom(x[i]).ticks(d3.timeMinute.every(30)).tickFormat(d3.timeFormat('')))
-          .select('.domain')
-          .remove();
-        g[i].append('g')
-          .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
-          .call(d3.axisBottom(x[i]).ticks(d3.timeHour.every(1)).tickFormat(d3.timeFormat('%H:00')))
+          .call(d3.axisBottom(x[i]).ticks(d3.timeDay.every(1)).tickFormat(d3.timeFormat('%b %d')))
           .select('.domain')
           .remove();
         axisMargin += 20;
-      }
-      g[i].append('g')
-        .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
-        .call(d3.axisBottom(x[i]).ticks(d3.timeDay.every(1)).tickFormat(d3.timeFormat('%b %d')))
-        .select('.domain')
-        .remove();
-      axisMargin += 20;
 
-      g[i].append('g')
-        .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
-        .call(d3.axisBottom(x[i]).ticks(d3.timeDay.every(1)).tickFormat(d3.timeFormat('%a')))
-        .select('.domain')
-        .remove();
+        g[i].append('g')
+          .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
+          .call(d3.axisBottom(x[i]).ticks(d3.timeDay.every(1)).tickFormat(d3.timeFormat('%a')))
+          .select('.domain')
+          .remove();
 
-      g[i].append('g')
-        .attr('transform', 'translate(-5, 0)')
-        .call(d3.axisLeft(y[i]));
+        g[i].append('g')
+          .attr('transform', 'translate(-5, 0)')
+          .call(d3.axisLeft(y[i]));
 
 //      g.append('path')
 //        .datum(data[i])
@@ -218,69 +226,75 @@
 //        .attr('stroke-width', 1.5)
 //        .attr('d', line);
 
-      g[i].selectAll('rect').data(data[i]).enter()
-        .append('rect')
-        .attr('transform', function(d) {
-          return 'translate(' + (x[i](d.date) - .5) + ',' + y[i](extractFeature(i, d)) + ')';
-        })
-        .attr('width', 1)
-        .attr('height', function (d) {
-          return height - y[i](extractFeature(i, d));
-        })
-        .attr('fill', extractDayColor)
-        .attr('stroke', 'none')
-        .style('opacity', .4);
+        g[i].selectAll('rect').data(data[i]).enter()
+          .append('rect')
+          .attr('transform', function (d) {
+            return 'translate(' + (x[i](d.date) - .5) + ',' + y[i](extractFeature(i, d)) + ')';
+          })
+          .attr('width', 1)
+          .attr('height', function (d) {
+            return height - y[i](extractFeature(i, d));
+          })
+          .attr('fill', extractDayColor)
+          .attr('stroke', 'none')
+          .style('opacity', .4);
 
-      g[i].selectAll('circle').data(data[i]).enter()
-        .append('circle')
-        .attr('fill', extractDayColor)
-        .attr('stroke', extractDayColor)
-        .attr('stroke-width', 1.5)
-        .attr('r', 1)
-        .attr('cx', function (d) {
-          return x[i](d.date);
-        })
-        .attr('cy', function (d) {
-          return y[i](extractFeature(i, d));
-        })
-        .style('opacity', function(d) {
-          return extractFeature(i, d) ? 1 : .4;
-        });
+        g[i].selectAll('circle').data(data[i]).enter()
+          .append('circle')
+          .attr('fill', extractDayColor)
+          .attr('stroke', extractDayColor)
+          .attr('stroke-width', 1.5)
+          .attr('r', 1)
+          .attr('cx', function (d) {
+            return x[i](d.date);
+          })
+          .attr('cy', function (d) {
+            return y[i](extractFeature(i, d));
+          })
+          .style('opacity', function (d) {
+            return extractFeature(i, d) ? 1 : .4;
+          });
 
-      var focus = graph[i].append('g')
-        .style('display', 'none');
+        var focus = graph[i].append('g')
+          .style('display', 'none');
 
-      focus.append('circle')
-        .attr('fill', 'none')
-        .attr('stroke', 'steelblue')
-        .attr('r', 4.5);
+        focus.append('circle')
+          .attr('fill', 'none')
+          .attr('stroke', 'steelblue')
+          .attr('r', 4.5);
 
-      focus.append('text')
-        .attr('x', 0)
-        .attr('y', '1em')
-        .style('text-shadow', '2px 2px 2px white, 1px 0 2px white, 0 -1px 2px white, -1px 0 2px white');
+        focus.append('text')
+          .attr('x', 0)
+          .attr('y', '1em')
+          .style('text-shadow', '2px 2px 2px white, 1px 0 2px white, 0 -1px 2px white, -1px 0 2px white');
 
-      focus.append('path')
-        .attr('fill', 'none')
-        .attr('stroke', '#999')
-        .attr('stroke-width', 1)
-        .attr('d', 'M 0 0 L 0 ' + height);
+        focus.append('path')
+          .attr('fill', 'none')
+          .attr('stroke', '#999')
+          .attr('stroke-width', 1)
+          .attr('d', 'M 0 0 L 0 ' + height);
 
-      graph[i].append('rect')
-        .attr('transform', 'translate(' + (margin.left - 5) + ',' + margin.top + ')')
-        .attr('fill', 'none')
-        .attr('width', width[i])
-        .attr('height', height)
-        .style('pointer-events', 'all')
-        .on('mouseover', function() { focus.style('display', null); })
-        .on('mouseout', function() { focus.style('display', 'none'); })
-        .on('mousemove', mousemove);
+        graph[i].append('rect')
+          .attr('transform', 'translate(' + (margin.left - 5) + ',' + margin.top + ')')
+          .attr('fill', 'none')
+          .attr('width', width[i])
+          .attr('height', height)
+          .style('pointer-events', 'all')
+          .on('mouseover', function () {
+            focus.style('display', null);
+          })
+          .on('mouseout', function () {
+            focus.style('display', 'none');
+          })
+          .on('mousemove', mousemove);
 
         function mousemove() {
           var x0 = x[i].invert(d3.mouse(this)[0]);
-          var b = d3.bisector(function (d) { return d.date; }).left(data[i], x0, 1);
+          var b = d3.bisector(function (d) {
+            return d.date;
+          }).left(data[i], x0, 1);
           var d;
-          if(b === data[i].length) {
+          if (b === data[i].length) {
             d = data[i][b - 1];
           } else {
             var d0 = data[i][b - 1];
@@ -294,8 +308,9 @@
             .attr('transform', 'translate(' + 0 + ',' + y[i](extractFeature(i, d)) + ')');
           focus.select('text')
             .attr('transform', 'translate(' + 0 + ',' + y[i](extractFeature(i, d)) + ')')
-            .text(Math.round(extractFeature(i, d)*100)/100);
+            .text(Math.round(extractFeature(i, d) * 100) / 100);
         }
+      }
     };
 
     xhr.open('GET', 'features.json', true);
@@ -320,8 +335,8 @@
           for(i = 0; i < device.length; ++i) {
             prepareData(i);
             updateFeatures(i);
-            showGraph(i);
           }
+          showGraphs();
         };
 
         for(i = 0; i < device.length; ++i) {
@@ -329,29 +344,29 @@
             return function () {
               updateWeeks(i);
               prepareData(i);
-              showGraph(i);
+              showGraphs();
             }
           })(i);
 
           week[i].onchange = (function(i) {
             return function () {
                 prepareData(i);
-                showGraph(i);
+                showGraphs();
               }
             })(i);
 
           feature[i].onchange = (function(i) {
             return function () {
               prepareData(i);
-              showGraph(i);
+              showGraphs();
             }
           })(i);
 
           updateWeeks(i);
           prepareData(i);
           updateFeatures(i);
-          showGraph(i);
         }
+        showGraphs();
       }
     };
     xhr.send();
