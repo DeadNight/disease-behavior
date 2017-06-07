@@ -15,10 +15,7 @@
     <label for="week1">week:</label>
     <select id='week1'></select>
     <label for="feature1">feature:</label>
-    <select id='feature1'>
-        <option>distance</option>
-        <option>speed</option>
-    </select>
+    <select id='feature1'></select>
 </div>
 <div>
     <svg id="graph1" width='6000' height='335'></svg>
@@ -29,10 +26,7 @@
     <label for="week2">week:</label>
     <select id='week2'></select>
     <label for="feature2">feature:</label>
-    <select id='feature2'>
-        <option>distance</option>
-        <option>speed</option>
-    </select>
+    <select id='feature2'></select>
 </div>
 <div>
     <svg id="graph2" width='6000' height='335'></svg>
@@ -146,6 +140,9 @@
         if(k != 'date' && data[i][0].hasOwnProperty(k)) {
           var option = document.createElement('option');
           option.innerText = k;
+          if(graphType.value == 'raw' && k == 'distance') {
+            option.setAttribute('selected', 'selected');
+          }
           feature[i].appendChild(option);
         }
       }
