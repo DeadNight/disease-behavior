@@ -348,24 +348,59 @@
 
         for(i = 0; i < device.length; ++i) {
           device[i].onchange = (function(i) {
-            return function () {
-              updateWeeks(i);
-              prepareData(i);
-              showGraphs();
+            if(i == 0) {
+              return function () {
+                updateWeeks(i);
+                prepareData(i);
+                for(var j = 1; j < device.length; ++j) {
+                  device[j].value = device[0].value;
+                  updateWeeks(j);
+                  prepareData(j);
+                }
+                showGraphs();
+              }
+            } else {
+              return function () {
+                updateWeeks(i);
+                prepareData(i);
+                showGraphs();
+              }
             }
           })(i);
 
           week[i].onchange = (function(i) {
-            return function () {
+            if(i == 0) {
+              return function () {
+                prepareData(i);
+                for(var j = 1; j < week.length; ++j) {
+                  week[j].value = week[0].value;
+                  prepareData(j);
+                }
+                showGraphs();
+              }
+            } else {
+              return function () {
                 prepareData(i);
                 showGraphs();
               }
+            }
             })(i);
 
           feature[i].onchange = (function(i) {
-            return function () {
-              prepareData(i);
-              showGraphs();
+            if(i == 0) {
+              return function () {
+                prepareData(i);
+                for(var j = 1; j < feature.length; ++j) {
+                  feature[j].value = feature[0].value;
+                  prepareData(j);
+                }
+                showGraphs();
+              }
+            } else {
+              return function () {
+                prepareData(i);
+                showGraphs();
+              }
             }
           })(i);
 
