@@ -332,7 +332,7 @@
             for(i = 0; i < device.length; ++i) {
               var option = document.createElement('option');
               option.value = d;
-              option.innerText = deviceData.email;
+              option.innerText = d + ' ***'; // deviceData.email;
               device[i].appendChild(option);
             }
           }
