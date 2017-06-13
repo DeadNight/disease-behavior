@@ -188,7 +188,7 @@
 
           if (graphType.value == 'raw') {
             g[i].append('g')
-              .attr('transform', 'translate(0,' + height + axisMargin + ')')
+              .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
               .call(d3.axisBottom(x[i]).ticks(d3.timeMinute.every(5)).tickFormat(d3.timeFormat('')))
               .select('.domain')
               .remove();
@@ -332,7 +332,7 @@
             for(i = 0; i < device.length; ++i) {
               var option = document.createElement('option');
               option.value = d;
-              option.innerText = d + ' ***'; // deviceData.email;
+              option.innerText = d + ' ' + deviceData.email;
               device[i].appendChild(option);
             }
           }
