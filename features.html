@@ -122,6 +122,21 @@
       }
     };
 
+    var deviceChangeHandler = function(i) {
+      if(i == 0) {
+        updateWeeks(i);
+        prepareData(i);
+        for(var j = 1; j < device.length; ++j) {
+          device[j].value = device[0].value;
+          updateWeeks(j);
+        }
+        weekChangeHandler(i);
+      } else {
+        updateWeeks(i);
+        weekChangeHandler(i);
+      }
+    };
+
     var updateWeeks = function(i) {
       while(week[i].children.length)
         week[i].removeChild(week[i].children[0]);
@@ -138,6 +153,25 @@
       }
     };
 
+    var weekChangeHandler = function(i) {
+      if(i == 0) {
+        prepareData(i);
+        for(var j = 1; j < week.length; ++j) {
+          var next = Array.prototype.find.call(week[j].children, function(opt){ return opt.value > week[0].value });
+          if(next) {
+            week[j].value = next.value;
+          } else {
+            week[j].value = week[j].lastChild.value
+          }
+          prepareData(j);
+        }
+        showGraphs();
+      } else {
+        prepareData(i);
+        showGraphs();
+      }
+    };
+
     var updateFeatures = function(i) {
       while(feature[i].children.length)
         feature[i].removeChild(feature[i].children[0]);
@@ -150,6 +184,20 @@
           }
           feature[i].appendChild(option);
         }
+      }
+    };
+
+    var featureChangeHandler = function(i) {
+      if(i == 0) {
+        prepareData(i);
+        for(var j = 1; j < feature.length; ++j) {
+          feature[j].value = feature[0].value;
+          prepareData(j);
+        }
+        showGraphs();
+      } else {
+        prepareData(i);
+        showGraphs();
       }
     };
 
@@ -188,7 +236,7 @@
 
           if (graphType.value == 'raw') {
             g[i].append('g')
-              .attr('transform', 'translate(0,' + height + axisMargin + ')')
+              .attr('transform', 'translate(0,' + (height + axisMargin) + ')')
               .call(d3.axisBottom(x[i]).ticks(d3.timeMinute.every(5)).tickFormat(d3.timeFormat('')))
               .select('.domain')
               .remove();
@@ -332,7 +380,7 @@
             for(i = 0; i < device.length; ++i) {
               var option = document.createElement('option');
               option.value = d;
-              option.innerText = deviceData.email;
+              option.innerText = d + ' ' + deviceData.email;
               device[i].appendChild(option);
             }
           }
@@ -347,67 +395,15 @@
         };
 
         for(i = 0; i < device.length; ++i) {
-          device[i].onchange = (function(i) {
-            if(i == 0) {
-              return function () {
-                updateWeeks(i);
-                prepareData(i);
-                for(var j = 1; j < device.length; ++j) {
-                  device[j].value = device[0].value;
-                  updateWeeks(j);
-                  prepareData(j);
-                }
-                showGraphs();
-              }
-            } else {
-              return function () {
-                updateWeeks(i);
-                prepareData(i);
-                showGraphs();
-              }
-            }
-          })(i);
-
-          week[i].onchange = (function(i) {
-            if(i == 0) {
-              return function () {
-                prepareData(i);
-                for(var j = 1; j < week.length; ++j) {
-                  week[j].value = week[0].value;
-                  prepareData(j);
-                }
-                showGraphs();
-              }
-            } else {
-              return function () {
-                prepareData(i);
-                showGraphs();
-              }
-            }
-            })(i);
-
-          feature[i].onchange = (function(i) {
-            if(i == 0) {
-              return function () {
-                prepareData(i);
-                for(var j = 1; j < feature.length; ++j) {
-                  feature[j].value = feature[0].value;
-                  prepareData(j);
-                }
-                showGraphs();
-              }
-            } else {
-              return function () {
-                prepareData(i);
-                showGraphs();
-              }
-            }
-          })(i);
+          device[i].onchange = (function(i) { return function() { deviceChangeHandler(i); } })(i);
+          week[i].onchange = (function(i) { return function() { weekChangeHandler(i); } })(i);
+          feature[i].onchange = (function(i) { return function() { featureChangeHandler(i); } })(i);
 
           updateWeeks(i);
           prepareData(i);
           updateFeatures(i);
         }
+        weekChangeHandler(0);
         showGraphs();
       }
     };
