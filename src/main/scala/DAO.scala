@@ -2,6 +2,7 @@ import java.time.{LocalDateTime, ZoneId, ZoneOffset, ZonedDateTime}
 import java.util.TimeZone
 
 import jdk.nashorn.internal.parser.JSONParser
+import org.opensextant.geodesy.{Angle, Geodetic2DPoint, Latitude, Longitude}
 
 import scala.collection.mutable
 import scala.util.parsing.json.{JSON, JSONObject}
@@ -12,17 +13,17 @@ import scala.util.parsing.json.{JSON, JSONObject}
 object DAO {
   val connectionUrl: String = "jdbc:sqlserver://localhost;databaseName=traccar;integratedSecurity=true"
 
-  def loadPositions(): Seq[Position] = {
+  def loadDataPoints(): Seq[DataPoint] = {
     import java.sql.DriverManager
 
-    val positions = mutable.ListBuffer[Position]()
+    val positions = mutable.ListBuffer[DataPoint]()
 
     try {
       // Load SQL Server JDBC driver and establish connection.
       val connection = DriverManager.getConnection(connectionUrl)
       try {
         val statement = connection.prepareStatement(
-          "select d.id, d.name, p.servertime, p.speed, p.attributes" +
+          "select d.id, d.name, p.servertime, p.speed, p.attributes, p.latitude, p.longitude" +
           " from devices d" +
           " inner join positions p" +
           " on d.id = p.deviceid" +
@@ -31,13 +32,17 @@ object DAO {
         val result = statement.executeQuery()
         while(result.next()) {
           val attributes: JSONObject = JSON.parseRaw(result.getString("attributes")).getOrElse(JSONObject(Map.empty)).asInstanceOf[JSONObject]
-          positions += Position(
+          positions += DataPoint(
             result.getLong("id"),
             result.getString("name"),
             ZonedDateTime.ofInstant(result.getTimestamp("servertime").toLocalDateTime, ZoneOffset.ofHours(2), TimeZone.getDefault.toZoneId),
             result.getDouble("speed"),
             attributes.obj("distance").asInstanceOf[Double],
-            attributes.obj("totalDistance").asInstanceOf[Double])
+            attributes.obj("totalDistance").asInstanceOf[Double],
+            new Geodetic2DPoint(new Longitude(Math.toRadians(result.getDouble("longitude"))), new Latitude(Math.toRadians(result.getDouble("latitude")))),
+            result.getDouble("latitude"),
+            result.getDouble("longitude")
+          )
         }
       } finally {
         if (connection != null)
