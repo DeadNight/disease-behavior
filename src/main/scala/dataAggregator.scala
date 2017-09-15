@@ -9,7 +9,7 @@ import scala.collection.mutable.ListBuffer
 object dataAggregator extends App {
   val SEPARATOR = '\t'
 
-  val positions: Seq[Position] = DAO.loadPositions()
+  val positions: Seq[DataPoint] = DAO.loadDataPoints()
   val devices: Seq[(Long, String)] = positions.map(p => (p.deviceId, p.email)).distinct
 
   val firstDay = positions.minBy(_.date.getDayOfYear).date.truncatedTo(ChronoUnit.DAYS)
