@@ -17,9 +17,9 @@ case class DataPoint(
                       rawLongitude: Double) {
   def dayPart: DayPart =  if(isDaytime) Day else  Night
 
-  def isDaytime = !(isNightBefore || isNightAfter)
+  def isDaytime: Boolean = !(isNightBefore || isNightAfter)
 
-  def isNightBefore = date.getHour < 6
+  def isNightBefore: Boolean = date.getHour < 6
 
-  def isNightAfter = date.getHour >= 22
+  def isNightAfter: Boolean = date.getHour >= 22
 }
