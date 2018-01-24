@@ -2,6 +2,8 @@ import java.io.{FileWriter, PrintWriter}
 import java.time.temporal.ChronoUnit
 import java.time.{Duration, ZonedDateTime}
 
+import il.ac.colman.disease.{DAO, DataPoint}
+
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
@@ -41,15 +43,15 @@ object locationExtractor extends App {
       case _ => ()
     }
 
-    byDevice.sortBy(_.date.toEpochSecond).foreach(dataPoint => {
+    byDevice.sortBy(_.dateTime.toEpochSecond).foreach(dataPoint => {
       (locationOpt, arrivalOpt, departureOpt) match {
         case (Some(location), Some(arrival), Some(departure)) => {
-          val time = departure.until(dataPoint.date, ChronoUnit.SECONDS)
-          if(time <= timeThreshold.getSeconds && location.distanceTo(dataPoint.geoPosition) / time <= speedThreshold) {
-            val candidateLocation = location + dataPoint.geoPosition
+          val time = departure.until(dataPoint.dateTime, ChronoUnit.SECONDS)
+          if(time <= timeThreshold.getSeconds && location.distanceTo(dataPoint.position) / time <= speedThreshold) {
+            val candidateLocation = location + dataPoint.position
             if(candidateLocation.radius <= radiusThreshold) {
               locationOpt = Some(candidateLocation)
-              departureOpt = Some(dataPoint.date)
+              departureOpt = Some(dataPoint.dateTime)
             } else {
               if(arrival.until(departure, ChronoUnit.SECONDS) >= visitTimeThreshold.getSeconds) {
                 val mergedLocation = location.merge(locations(deviceId))
@@ -70,9 +72,9 @@ object locationExtractor extends App {
           }
         }
         case _ => {
-          locationOpt = Some(Location(dataPoint.geoPosition))
-          arrivalOpt = Some(dataPoint.date)
-          departureOpt = Some(dataPoint.date)
+          locationOpt = Some(Location(dataPoint.position))
+          arrivalOpt = Some(dataPoint.dateTime)
+          departureOpt = Some(dataPoint.dateTime)
         }
       }
     })

@@ -3,6 +3,7 @@ import java.time.ZonedDateTime
 import java.time.temporal.{ChronoUnit, WeekFields}
 import java.util.Locale
 
+import il.ac.colman.disease.{DAO, DataPoint}
 import org.opensextant.geodesy.Geodetic2DArc
 
 /**
@@ -18,27 +19,27 @@ object featureExtractor extends App {
       JSONObject(Map(
         "email" -> byDevice.head.email,
         "weeks" -> {
-          JSONObject(byDevice.groupBy(dp => getWeek(dp.date)).toSeq.sortBy(_._1).map { case (week, byWeek) => week.toString -> {
+          JSONObject(byDevice.groupBy(dp => getWeek(dp.dateTime)).toSeq.sortBy(_._1).map { case (week, byWeek) => week.toString -> {
             JSONObject(Map(
-              "minDay" -> byWeek.minBy(dp => dp.date.getDayOfYear).date.truncatedTo(ChronoUnit.DAYS).toOffsetDateTime.toString,
-              "maxDay" -> byWeek.maxBy(dp => dp.date.getDayOfYear).date.truncatedTo(ChronoUnit.DAYS).toOffsetDateTime.toString,
+              "minDay" -> byWeek.minBy(dp => dp.dateTime.getDayOfYear).dateTime.truncatedTo(ChronoUnit.DAYS).toOffsetDateTime.toString,
+              "maxDay" -> byWeek.maxBy(dp => dp.dateTime.getDayOfYear).dateTime.truncatedTo(ChronoUnit.DAYS).toOffsetDateTime.toString,
               "days" -> {
-                JSONObject(byWeek.groupBy(dp => dp.date.getDayOfYear).toSeq.sortBy(_._1).map { case (day, byDay) => day.toString -> {
+                JSONObject(byWeek.groupBy(dp => dp.dateTime.getDayOfYear).toSeq.sortBy(_._1).map { case (day, byDay) => day.toString -> {
                   JSONObject(Map(
-                    "date" -> byDay.head.date.truncatedTo(ChronoUnit.DAYS).toOffsetDateTime.toString,
+                    "date" -> byDay.head.dateTime.truncatedTo(ChronoUnit.DAYS).toOffsetDateTime.toString,
                     "totalDistance" -> (byDay.maxBy(dp => dp.totalDistance).totalDistance - byDay.minBy(p => p.totalDistance).totalDistance),
-                    "data" -> JSONArray(byDay.sortBy(_.date.toEpochSecond).map(dp => {
+                    "data" -> JSONArray(byDay.sortBy(_.dateTime.toEpochSecond).map(dp => {
                       if (lastDataPoint == null || lastDataPoint.deviceId != deviceId)
                         lastDataPoint = dp
-                      val gap = lastDataPoint.date.until(dp.date, ChronoUnit.MINUTES)
+                      val gap = lastDataPoint.dateTime.until(dp.dateTime, ChronoUnit.MINUTES)
 
                       val obj = JSONObject(Map(
-                        "timestamp" -> dp.date.toOffsetDateTime.toString,
+                        "timestamp" -> dp.dateTime.toOffsetDateTime.toString,
                         "speed" -> dp.speed,
                         "distance" -> dp.distance,
                         "gap" -> gap,
-                        "latitude" -> dp.geoPosition.getLatitude.inDegrees,
-                        "longitude" -> dp.geoPosition.getLongitude.inDegrees
+                        "latitude" -> dp.position.getLatitude.inDegrees,
+                        "longitude" -> dp.position.getLongitude.inDegrees
                       ))
                       lastDataPoint = dp
                       obj

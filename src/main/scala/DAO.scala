@@ -24,11 +24,11 @@ object DAO {
       try {
         val statement = connection.prepareStatement(
           "select d.id, d.name, p.servertime, p.speed, p.attributes, p.latitude, p.longitude" +
-          " from devices d" +
-          " inner join positions p" +
-          " on d.id = p.deviceid" +
-          " where d.name not in('Lior', 'Tal', 'Ron', 'maayan')" +
-          " order by d.id, p.servertime")
+            " from devices d" +
+            " inner join positions p" +
+            " on d.id = p.deviceid" +
+            " where d.name not in('Lior', 'Tal', 'Ron', 'maayan')" +
+            " order by d.id, p.servertime")
         val result = statement.executeQuery()
         while(result.next()) {
           val attributes: JSONObject = JSON.parseRaw(result.getString("attributes")).getOrElse(JSONObject(Map.empty)).asInstanceOf[JSONObject]

@@ -8,18 +8,18 @@ import org.opensextant.geodesy.Geodetic2DPoint
 case class DataPoint(
                       deviceId: Long,
                       email: String,
-                      date: ZonedDateTime,
+                      dateTime: ZonedDateTime,
                       speed: Double,
                       distance: Double,
                       totalDistance: Double,
-                      geoPosition: Geodetic2DPoint,
+                      position: Geodetic2DPoint,
                       rawLatitude: Double,
                       rawLongitude: Double) {
   def dayPart: DayPart =  if(isDaytime) Day else  Night
 
   def isDaytime = !(isNightBefore || isNightAfter)
 
-  def isNightBefore = date.getHour < 6
+  def isNightBefore = dateTime.getHour < 6
 
-  def isNightAfter = date.getHour >= 22
+  def isNightAfter = dateTime.getHour >= 22
 }
