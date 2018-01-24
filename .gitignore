@@ -21,3 +21,6 @@ buildNumber.properties
 /questionnaires.tsv
 /diff.tsv
 /visits.json
+/disease.iml
+/preProcessedData.txt
+/processedData.txt

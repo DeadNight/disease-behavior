@@ -12,8 +12,8 @@ object dataAggregator extends App {
   val positions: Seq[DataPoint] = DAO.loadDataPoints()
   val devices: Seq[(Long, String)] = positions.map(p => (p.deviceId, p.email)).distinct
 
-  val firstDay = positions.minBy(_.date.getDayOfYear).date.truncatedTo(ChronoUnit.DAYS)
-  val lastDay = positions.maxBy(_.date.getDayOfYear).date.truncatedTo(ChronoUnit.DAYS)
+  val firstDay = positions.minBy(_.dateTime.getDayOfYear).dateTime.truncatedTo(ChronoUnit.DAYS)
+  val lastDay = positions.maxBy(_.dateTime.getDayOfYear).dateTime.truncatedTo(ChronoUnit.DAYS)
 
   val dataBuffer = ListBuffer[((Long, ZonedDateTime, DayPart), AggregatedData)]()
 
@@ -38,8 +38,8 @@ object dataAggregator extends App {
     // check if last aggregation should be closed
     val isSameDevice = lastDeviceId == position.deviceId
     val isSameDayPart = lastDayPart == position.dayPart
-    val isSameDay = lastDateTime.toLocalDate == position.date.toLocalDate
-    val isNightBefore = position.isNightBefore && lastDateTime.toLocalDate == position.date.toLocalDate.minusDays(1)
+    val isSameDay = lastDateTime.toLocalDate == position.dateTime.toLocalDate
+    val isNightBefore = position.isNightBefore && lastDateTime.toLocalDate == position.dateTime.toLocalDate.minusDays(1)
 
     if (!isSameDevice || !isSameDayPart || !(isSameDay || isNightBefore)) {
       // aggregate gaps until end of last day part
@@ -53,7 +53,7 @@ object dataAggregator extends App {
 
       // reset aggregation for new day part
       val dayPartStartHour = if (position.dayPart == Day) 6 else 22
-      lastDateTime = position.date.withHour(dayPartStartHour)
+      lastDateTime = position.dateTime.withHour(dayPartStartHour)
       transmissions = 0
       gaps6h = 0
       gaps3h = 0
@@ -63,10 +63,10 @@ object dataAggregator extends App {
     }
 
     transmissions += 1
-    aggregateGaps(position.date)
+    aggregateGaps(position.dateTime)
 
     lastDeviceId = position.deviceId
-    lastDateTime = position.date
+    lastDateTime = position.dateTime
   }
 
   val lastDayPart = if (lastDateTime.getHour >= 6 && lastDateTime.getHour < 22) Day else Night
