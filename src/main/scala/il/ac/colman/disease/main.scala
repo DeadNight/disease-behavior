@@ -12,6 +12,7 @@ object main extends App {
   val basicData: Map[DeviceId, BasicParticipantData] = preProcessData(rawData)
 
   // extract features
+  //NOTE: participants without night data are filtered out
   val validDevices = basicData.keySet
   val fullData = extractFeatures(rawData.filter(d => validDevices.contains(d.deviceId)), basicData)
 
@@ -46,10 +47,10 @@ object main extends App {
         if (dataPoint.deviceId == deviceId) {
           if (visitBuilder.isEmpty) {
             if ((NIGHT_START.isAfter(LocalTime.of(12, 0, 0)) && (dataPoint.dateTime.toLocalTime.isBefore(NIGHT_START) && dataPoint.dateTime.toLocalTime.isAfter(NIGHT_END)))
-              | (NIGHT_START.isBefore(LocalTime.of(12, 0, 0)) && (dataPoint.dateTime.toLocalTime.isBefore(NIGHT_START) || dataPoint.dateTime.toLocalTime.isAfter(NIGHT_END)))) {
+              || (NIGHT_START.isBefore(LocalTime.of(12, 0, 0)) && (dataPoint.dateTime.toLocalTime.isBefore(NIGHT_START) || dataPoint.dateTime.toLocalTime.isAfter(NIGHT_END)))) {
               process(rawData.tail, processedData, deviceId, nightLocations, day, nightVisits, visitBuilder, distance)
             } else if (dataPoint.dateTime.toLocalDate.isEqual(day)
-              | (NIGHT_START.isAfter(LocalTime.of(12, 0, 0)) && dataPoint.dateTime.toLocalTime.isBefore(NIGHT_END) && dataPoint.dateTime.toLocalDate.isEqual(day.plusDays(1)))) {
+              || (NIGHT_START.isAfter(LocalTime.of(12, 0, 0)) && dataPoint.dateTime.toLocalTime.isBefore(NIGHT_END) && dataPoint.dateTime.toLocalDate.isEqual(day.plusDays(1)))) {
               process(rawData.tail, processedData, deviceId, nightLocations, day, nightVisits, visitBuilder.add(dataPoint), distance = 0)
             } else if (nightVisits.nonEmpty) {
               val homeCandidate: Location = getHomeCandidate(nightVisits)
@@ -58,13 +59,14 @@ object main extends App {
               process(rawData.tail, processedData, deviceId, nightLocations, dataPoint.dateTime.toLocalDate, nightVisits = Nil, visitBuilder.add(dataPoint), distance = 0)
             }
           } else {
+            //TODO: check if still same day
             val newDistance: Meters = distance + dataPoint.position.distanceTo(visitBuilder.head)
             if (newDistance <= 2 * HOME_RADIUS) {
               process(rawData.tail, processedData, deviceId, nightLocations, day, nightVisits, visitBuilder.add(dataPoint), newDistance)
             } else {
               val radius = visitBuilder.calcRadius()
               if (radius <= HOME_RADIUS) {
-                process(rawData.tail, processedData, deviceId, nightLocations, day, nightVisits, visitBuilder.add(dataPoint), radius)
+                process(rawData.tail, processedData, deviceId, nightLocations, day, nightVisits, visitBuilder.add(dataPoint), 2 * radius)
               } else {
                 process(rawData, processedData, deviceId, nightLocations, day, visitBuilder.build() +: nightVisits, visitBuilder.clear(dataPoint.dateTime), distance = 0)
               }
