@@ -111,6 +111,7 @@ object main extends App {
   }
 
   def extractFeatures(rawData: Seq[DataPoint], basicData: Map[DeviceId, BasicParticipantData]): Map[DeviceId, FullParticipantData] = {
+
     def extract(rawData: Seq[DataPoint], lastDataPoint: DataPoint, participantDataAccumulator: Map[DeviceId, FullParticipantData],
                 dailyDataAccumulator: Map[LocalDate, FullDailyData], trips: Int, totalDistance: Meters, totalWalkingDistance: Meters,
                 totalDrivingDistance: Meters, maxTripDistance: Meters, maxTripDiameter: Meters, totalDuration: Duration,
@@ -160,42 +161,42 @@ object main extends App {
               extract(rawData.tail, rawData.head, participantDataAccumulator, dailyDataAccumulator, trips, totalDistance,
                 totalWalkingDistance, totalDrivingDistance, maxTripDistance, maxTripDiameter, totalDuration, totalWalkingDuration,
                 totalDrivingDuration, maxTripDuration, distance, distance, 0.0, duration, duration, Duration.ZERO, distanceFromHome)
-            } else {
+            } else { // speed >= MIN_DRIVING_SPEED
               extract(rawData.tail, rawData.head, participantDataAccumulator, dailyDataAccumulator, trips, totalDistance,
                 totalWalkingDistance, totalDrivingDistance, maxTripDistance, maxTripDiameter, totalDuration, totalWalkingDuration,
                 totalDrivingDuration, maxTripDuration, distance, 0.0, distance, duration, Duration.ZERO, duration, distanceFromHome)
             }
           } else if (!wasHome && isHome) {
-            if (tripDuration.compareTo(TRIP_MINIMUM_DURATION) >= 0 && tripDistance >= TRIP_MINIMUM_DISTANCE) {
+            if (tripDuration.compareTo(TRIP_MINIMUM_DURATION) < 0 || tripDistance < TRIP_MINIMUM_DISTANCE) {
+              extract(rawData.tail, rawData.head, participantDataAccumulator, dailyDataAccumulator, trips, totalDistance,
+                totalWalkingDistance, totalDrivingDistance, maxTripDistance, maxTripDiameter, totalDuration, totalWalkingDuration,
+                totalDrivingDuration, maxTripDuration, 0.0, 0.0, 0.0, Duration.ZERO, Duration.ZERO, Duration.ZERO, 0.0)
+            } else { // tripDuration.compareTo(TRIP_MINIMUM_DURATION) >= 0 && tripDistance >= TRIP_MINIMUM_DISTANCE
               val distance = lastDataPoint.position.distanceTo(rawData.head.position)
               val duration = Duration.between(lastDataPoint.dateTime, rawData.head.dateTime)
               val updatedTripDuration = tripDuration.plus(duration)
               val updatedTripDistance = tripDistance + distance
               val updatedMaxTripDuration = List(updatedTripDuration, maxTripDuration).maxBy(_.toNanos)
               val speed = distance / (duration.toNanos.toDouble / NANOS_IN_SECOND)
-              if(duration.isZero || speed < MIN_WALKING_SPEED) {
+              if (duration.isZero || speed < MIN_WALKING_SPEED) {
                 extract(rawData.tail, rawData.head, participantDataAccumulator, dailyDataAccumulator, trips + 1, totalDistance + updatedTripDistance,
                   totalWalkingDistance + tripWalkingDistance, totalDrivingDistance + tripDrivingDistance, Math.max(maxTripDistance, updatedTripDistance),
-                  Math.max(maxTripDiameter, Math.max(tripDiameter, distanceFromHome)), totalDuration.plus(updatedTripDuration),
+                  Math.max(maxTripDiameter, tripDiameter), totalDuration.plus(updatedTripDuration),
                   totalWalkingDuration.plus(tripWalkingDuration), totalDrivingDuration.plus(tripDrivingDuration), updatedMaxTripDuration,
                   0.0, 0.0, 0.0, Duration.ZERO, Duration.ZERO, Duration.ZERO, 0.0)
-              } else if(speed < MIN_DRIVING_SPEED) {
+              } else if (speed < MIN_DRIVING_SPEED) {
                 extract(rawData.tail, rawData.head, participantDataAccumulator, dailyDataAccumulator, trips + 1, totalDistance + updatedTripDistance,
                   totalWalkingDistance + tripWalkingDistance + distance, totalDrivingDistance + tripDrivingDistance, Math.max(maxTripDistance, updatedTripDistance),
-                  Math.max(maxTripDiameter, Math.max(tripDiameter, distanceFromHome)), totalDuration.plus(updatedTripDuration),
+                  Math.max(maxTripDiameter, tripDiameter), totalDuration.plus(updatedTripDuration),
                   totalWalkingDuration.plus(tripWalkingDuration).plus(duration), totalDrivingDuration.plus(tripDrivingDuration),
                   updatedMaxTripDuration, 0.0, 0.0, 0.0, Duration.ZERO, Duration.ZERO, Duration.ZERO, 0.0)
-              } else {
+              } else { // speed >= MIN_DRIVING_SPEED
                 extract(rawData.tail, rawData.head, participantDataAccumulator, dailyDataAccumulator, trips + 1, totalDistance + updatedTripDistance,
                   totalWalkingDistance + tripWalkingDistance, totalDrivingDistance + tripDrivingDistance + distance, Math.max(maxTripDistance, updatedTripDistance),
-                  Math.max(maxTripDiameter, Math.max(tripDiameter, distanceFromHome)), totalDuration.plus(updatedTripDuration),
+                  Math.max(maxTripDiameter, tripDiameter), totalDuration.plus(updatedTripDuration),
                   totalWalkingDuration.plus(tripWalkingDuration), totalDrivingDuration.plus(tripDrivingDuration).plus(duration),
                   updatedMaxTripDuration, 0.0, 0.0, 0.0, Duration.ZERO, Duration.ZERO, Duration.ZERO, 0.0)
               }
-            } else { // tripDuration.compareTo(TRIP_MINIMUM_DURATION) < 0 || tripDistance < TRIP_MINIMUM_DISTANCE
-              extract(rawData.tail, rawData.head, participantDataAccumulator, dailyDataAccumulator, trips, totalDistance,
-                totalWalkingDistance, totalDrivingDistance, maxTripDistance, maxTripDiameter, totalDuration, totalWalkingDuration,
-                totalDrivingDuration, maxTripDuration, 0.0, 0.0, 0.0, Duration.ZERO, Duration.ZERO, Duration.ZERO, 0.0)
             }
           } else { // !wasHome && !isHome
             val distance = lastDataPoint.position.distanceTo(rawData.head.position)
@@ -211,13 +212,14 @@ object main extends App {
                 totalWalkingDistance, totalDrivingDistance, maxTripDistance, maxTripDiameter, totalDuration, totalWalkingDuration,
                 totalDrivingDuration, maxTripDuration, tripDistance + distance, tripWalkingDistance + distance, tripDrivingDistance,
                 tripDuration.plus(duration), tripWalkingDuration.plus(duration), tripDrivingDuration, Math.max(tripDiameter, distanceFromHome))
-            } else {
+            } else { // speed >= MIN_DRIVING_SPEED
               extract(rawData.tail, rawData.head, participantDataAccumulator, dailyDataAccumulator, trips, totalDistance,
                 totalWalkingDistance, totalDrivingDistance, maxTripDistance, maxTripDiameter, totalDuration, totalWalkingDuration,
                 totalDrivingDuration, maxTripDuration, tripDistance + distance, tripWalkingDistance, tripDrivingDistance + distance,
                 tripDuration.plus(duration), tripWalkingDuration, tripDrivingDuration.plus(duration), Math.max(tripDiameter, distanceFromHome))
             }
           }
+          //TODO: Think what to do when day changes mid-trip, currently the trip is discarded
         } else if (trips > 0) { // rawData.head.dateTime.toLocalDate != lastDataPoint.dateTime.toLocalDate
           val home = basicData(lastDataPoint.deviceId).home
           val nightLocationOpt = basicData(lastDataPoint.deviceId).dailyData.get(lastDataPoint.dateTime.toLocalDate).map(_.nightLocation)
@@ -231,6 +233,7 @@ object main extends App {
           extract(rawData.tail, rawData.head, participantDataAccumulator, dailyDataAccumulator, 0, 0.0, 0.0, 0.0, 0.0, 0.0,
             Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, 0.0, 0.0, 0.0, Duration.ZERO, Duration.ZERO, Duration.ZERO, 0.0)
         }
+        //TODO: Think what to do when participant changes mid-trip, currently the trip is discarded
       } else if (trips > 0) { // rawData.head.deviceId != lastDataPoint.deviceId
         val home = basicData(lastDataPoint.deviceId).home
         val nightLocationOpt = basicData(lastDataPoint.deviceId).dailyData.get(lastDataPoint.dateTime.toLocalDate).map(_.nightLocation)
